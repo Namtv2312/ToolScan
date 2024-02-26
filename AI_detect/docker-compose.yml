@@ -1,5 +1,0 @@
-version: '2'
-services:
-  aiamas:
-    container_name: amas_ai_detect
-    build: .
