@@ -1,0 +1,116 @@
+// Copyright 2018 Saferwall. All rights reserved.
+// Use of this source code is governed by Apache v2 license
+// license that can be found in the LICENSE file.
+
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package sandbox;
+
+option go_package = "github.com/saferwall/agent";
+
+
+// The agent service definition.
+service Agent {
+
+  // Ping probes if the server is healthy and running saferwall analysis VM,
+  // some information about the guest are returned like OS name, ...
+  rpc Ping (google.protobuf.Empty) returns (PingReply) {}
+
+  // Deploy installs all the malware sandbox component files.
+  // This include the dll to be injected, the driver, the controller, etc ...
+  rpc Deploy (DeployRequest) returns (DeployReply) {}
+
+  // Analyze executes the sample inside the virtual machine and monitor its
+  // behavior.
+  rpc Analyze (AnalyzeFileRequest) returns (AnalyzeFileReply) {}
+}
+
+// PingReply contains the version of the server running and some guest info.
+message PingReply {
+  // The server version.
+  string version = 1;
+
+  // JSON containing the guest system information like OS, hardware, ...
+  bytes sysinfo = 2;
+}
+
+// DeployRequest message contains a zip package that includes all
+// necessery files.
+message DeployRequest {
+  // Zip file containing the sandbox app with its dependencies.
+  bytes package = 1;
+  // Destination path where to deploy the package.
+  string path = 2;
+}
+
+// DeployReply contains the version of the package that was deployed.
+message DeployReply {
+  // The sandbox version.
+  string version = 1;
+}
+
+// The request message containing a sample for analysis.
+message AnalyzeFileRequest {
+
+  // The binary file content.
+  bytes binary = 1;
+
+  // Configuration used to run the binary.
+  // This is basically a JSON serialized byte array that contains
+  // the configuration used to run the malware.
+  // Example of fields that it contains is:
+  //  - Full path to where the binary should be dropped in the guest.
+  //  - Arguments used to execute the binary.
+  //  - Timeout in seconds for how long to run the binary.
+  //  - Country used to tunnel the connections.
+  //  - The SHA256 hash of the binary.
+  //  - Whether mem dumps should be taken.
+  //  - etc ...
+  bytes config = 2;
+}
+
+// The response message containing the analysis results.
+message AnalyzeFileReply {
+
+    // APIs log produced by the sandbox in JSON Lines;
+    bytes api_trace = 1;
+
+    // Screenshots collected during the analysis.
+    message Screenshot {
+    // id represents an identifier to keep screenshots order.
+      int32 id = 1;
+      // content contains the image data.
+      bytes content = 2;
+    }
+    repeated Screenshot screenshots = 2;
+
+    // Artifacts created files or memory dumps.
+    message Artifact {
+      // The name of the artifact.
+      string name = 1;
+      // The binary content of the artifact.
+      bytes content = 2;
+    }
+    repeated Artifact artifacts = 3;
+
+    // API Buffers represents the buffers for parameters of type BYTE*
+    // that are larger than 4KB.
+    message APIBuffer {
+      // The name of the API buffer file.
+      string name = 1;
+      // The binary content of the buffer.
+      bytes content = 2;
+    }
+    repeated APIBuffer api_buffers = 4;
+
+    // Agent server log.
+    bytes server_log = 5;
+
+    // Controller log.
+    bytes controller_log = 6;
+
+    // Process tree data.
+    bytes process_tree = 7;
+}
